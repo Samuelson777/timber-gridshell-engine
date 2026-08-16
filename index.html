@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Enterprise Parametric Timber Gridshell Computational Engine v8.0</title>
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --panel-bg: rgba(18, 26, 41, 0.92);
+            --panel-border: rgba(255, 255, 255, 0.14);
+            --text-main: #f0f4f8;
+            --text-muted: #8a99ad;
+            --accent-color: #00d2ff;
+            --accent-hover: #00a3cc;
+            --accent-warning: #ffb703;
+            --accent-danger: #ff4d4d;
+            --accent-success: #06d6a0;
+            --input-bg: #131b2e;
+            --input-border: #23314d;
+            --hud-bg: rgba(11, 15, 25, 0.95);
+            --shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+            --card-bg: rgba(255, 255, 255, 0.04);
+            --ease-out: cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        [data-theme="light"] {
+            --bg-color: #eef2f6;
+            --panel-bg: rgba(255, 255, 255, 0.94);
+            --panel-border: rgba(0, 0, 0, 0.12);
+            --text-main: #101828;
+            --text-muted: #64748b;
+            --accent-color: #0284c7;
+            --accent-hover: #0369a1;
+            --accent-warning: #d97706;
+            --accent-danger: #dc2626;
+            --accent-success: #16a34a;
+            --input-bg: #f1f5f9;
+            --input-border: #cbd5e1;
+            --hud-bg: rgba(255, 255, 255, 0.96);
+            --shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
+            --card-bg: rgba(0, 0, 0, 0.02);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+        body { overflow: hidden; background: var(--bg-color); color: var(--text-main); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        #viewport { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1; }
+
+        .ui-element { transition: opacity 0.35s var(--ease-out), transform 0.35s var(--ease-out); will-change: opacity, transform; }
+        body.ui-collapsed #top-bar { opacity: 0 !important; pointer-events: none !important; transform: translateY(-100%); }
+        body.ui-collapsed #left-panel { opacity: 0 !important; pointer-events: none !important; transform: translateX(-30px); }
+        body.ui-collapsed #ui-panel { opacity: 0 !important; pointer-events: none !important; transform: translateX(30px); }
+        body.ui-collapsed #status-bar { opacity: 0 !important; pointer-events: none !important; transform: translateY(30px); }
+
+        #btn-restore-ui {
+            position: absolute; top: 16px; right: 16px; z-index: 1000;
+            background: var(--panel-bg); border: 1px solid var(--accent-color);
+            color: var(--text-main); padding: 8px 16px; border-radius: 30px;
+            font-size: 11px; font-weight: 700; cursor: pointer;
+            backdrop-filter: blur(12px); box-shadow: var(--shadow); display: flex; align-items: center; gap: 8px;
+            opacity: 0; pointer-events: none; transform: scale(0.9); transition: all 0.3s var(--ease-out);
+        }
+        body.ui-collapsed #btn-restore-ui { opacity: 0.9; pointer-events: auto; transform: scale(1); }
+        body.ui-collapsed #btn-restore-ui:hover { opacity: 1.0; transform: scale(1.05); }
+
+        #top-bar {
+            position: absolute; top: 0; left: 0; width: 100%; height: 56px;
+            background: var(--panel-bg); backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--panel-border); z-index: 100;
+            display: flex; align-items: center; justify-content: space-between; padding: 0 20px;
+        }
+
+        .brand-title { font-weight: 700; font-size: 14px; letter-spacing: 0.5px; display: flex; align-items: center; gap: 10px; }
+        .brand-badge { padding: 3px 8px; background: linear-gradient(135deg, var(--accent-color), #0077ff); color: #fff; border-radius: 4px; font-size: 10px; font-weight: 800; }
+        .top-nav { display: flex; gap: 6px; align-items: center; }
+
+        .btn { 
+            background: var(--card-bg); color: var(--text-main); border: 1px solid var(--panel-border);
+            padding: 7px 12px; border-radius: 6px; font-size: 11px; cursor: pointer; font-weight: 600;
+            transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 4px;
+        }
+        .btn:hover { border-color: var(--accent-color); color: var(--accent-color); transform: translateY(-1px); }
+        .btn.primary { background: var(--accent-color); color: #fff; border: none; }
+        .btn.primary:hover { background: var(--accent-hover); color: #fff; }
+        .btn.accent { background: var(--accent-success); color: #000; border: none; font-weight: 700; }
+        .btn.accent:hover { filter: brightness(1.1); }
+        
+        #left-panel {
+            position: absolute; top: 72px; left: 16px; width: 330px; z-index: 10;
+            display: flex; flex-direction: column; gap: 12px; pointer-events: none;
+            max-height: calc(100vh - 140px); overflow-y: auto; scrollbar-width: none;
+        }
+        #left-panel::-webkit-scrollbar { display: none; }
+
+        .panel-card {
+            background: var(--panel-bg); backdrop-filter: blur(16px);
+            border: 1px solid var(--panel-border); border-radius: 10px; padding: 16px;
+            box-shadow: var(--shadow); pointer-events: auto;
+        }
+
+        .card-header { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); font-weight: 700; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 6px; }
+        .stat-item { background: var(--card-bg); border: 1px solid var(--panel-border); padding: 8px 10px; border-radius: 6px; }
+        .stat-label { font-size: 9px; color: var(--text-muted); text-transform: uppercase; }
+        .stat-value { font-size: 13px; font-weight: 700; color: var(--accent-color); font-family: monospace; margin-top: 2px; }
+
+        #fea-legend { margin-top: 10px; display: none; }
+        .legend-bar { height: 8px; border-radius: 4px; background: linear-gradient(to right, #0000ff, #00ffff, #00ff00, #ffff00, #ff0000); margin-bottom: 4px; }
+        .legend-labels { display: flex; justify-content: space-between; font-size: 9px; color: var(--text-muted); font-family: monospace; }
+
+        #ui-panel {
+            position: absolute; top: 72px; right: 16px; width: 340px;
+            background: var(--panel-bg); backdrop-filter: blur(16px);
+            border: 1px solid var(--panel-border); border-radius: 10px;
+            padding: 16px; box-sizing: border-box; max-height: calc(100vh - 90px); overflow-y: auto;
+            box-shadow: var(--shadow); z-index: 10;
+        }
+
+        #ui-panel::-webkit-scrollbar { width: 4px; }
+        #ui-panel::-webkit-scrollbar-thumb { background: var(--panel-border); border-radius: 4px; }
+
+        .control-group { margin-bottom: 12px; }
+        label { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px; font-weight: 600; }
+        .val-display { color: var(--accent-color); font-family: monospace; font-weight: 700; }
+
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; background: var(--input-border); border-radius: 2px; }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; height: 14px; width: 14px; border-radius: 50%;
+            background: var(--accent-color); margin-top: -5px; cursor: pointer;
+        }
+
+        select {
+            width: 100%; background: var(--input-bg); border: 1px solid var(--input-border);
+            color: var(--text-main); padding: 8px 10px; border-radius: 6px; font-size: 11px;
+            outline: none; font-weight: 500; cursor: pointer;
+        }
+
+        .toggle-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+        .toggle-row span { font-size: 11px; font-weight: 600; }
+        
+        .switch { position: relative; display: inline-block; width: 36px; height: 18px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--input-border); transition: .2s; border-radius: 18px; }
+        .slider:before { position: absolute; content: ""; height: 12px; width: 12px; left: 3px; bottom: 3px; background-color: white; transition: .2s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--accent-color); }
+        input:checked + .slider:before { transform: translateX(18px); }
+
+        #hud {
+            position: absolute; display: none; padding: 10px 14px; background: var(--hud-bg);
+            border: 1px solid var(--panel-border); border-radius: 8px; pointer-events: none;
+            font-size: 11px; color: var(--text-main); z-index: 20; box-shadow: var(--shadow);
+            backdrop-filter: blur(12px); min-width: 200px;
+        }
+        .hud-header { font-weight: 700; color: var(--accent-color); margin-bottom: 4px; border-bottom: 1px solid var(--panel-border); padding-bottom: 4px; display: flex; justify-content: space-between;}
+
+        #status-bar {
+            position: absolute; bottom: 16px; left: 16px; background: var(--panel-bg);
+            padding: 8px 16px; border-radius: 6px; font-size: 10px; font-family: monospace;
+            border: 1px solid var(--panel-border); box-shadow: var(--shadow); z-index: 10;
+            display: flex; gap: 14px; backdrop-filter: blur(16px); color: var(--text-muted); flex-wrap: wrap;
+        }
+        .status-val { color: var(--text-main); font-weight: 700; }
+
+        #modal-overlay {
+            position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.65); backdrop-filter: blur(8px); z-index: 200;
+            display: none; align-items: center; justify-content: center;
+        }
+        .modal-body { background: var(--panel-bg); border: 1px solid var(--panel-border); width: 580px; max-width: 90vw; border-radius: 12px; padding: 24px; box-shadow: var(--shadow); }
+        .modal-title { font-size: 16px; font-weight: 700; color: var(--accent-color); margin-bottom: 12px; }
+        .modal-content { font-size: 12px; line-height: 1.6; color: var(--text-main); }
+        .modal-footer { margin-top: 18px; display: flex; justify-content: flex-end; }
+
+        @media (max-width: 850px) {
+            #left-panel { display: none; }
+            #ui-panel { right: 50%; transform: translateX(50%); width: 92%; max-width: 400px; bottom: 60px; top: auto; max-height: 45vh; }
+            #status-bar { justify-content: center; width: calc(100% - 32px); }
+            .brand-title { font-size: 11px; }
+        }
+    </style>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+
+    <button id="btn-restore-ui" title="Restore User Interface (H)">
+        <span>👁 Restore Interface [H]</span>
+    </button>
+
+    <div id="top-bar" class="ui-element">
+        <div class="brand-title">
+            <span class="brand-badge">EC5 / FEA PRO v8</span>
+            Timber Gridshell Engine
+        </div>
+        <div class="top-nav">
+            <button class="btn" id="btn-toggle-ui" title="Toggle Clean View Mode (H)">Hide UI [H]</button>
+            <button class="btn" id="btn-objective">Scope & Math</button>
+            <button class="btn" id="btn-view-iso">Iso</button>
+            <button class="btn" id="btn-view-top">Top</button>
+            <button class="btn" id="btn-view-front">Front</button>
+            <button class="btn" id="btn-view-side">Side</button>
+            <button class="btn" id="btn-theme">Theme</button>
+            <button class="btn accent" id="btn-export-bom">📁 Export BOM & Structural CSV</button>
+        </div>
+    </div>
+
+    <div id="viewport"></div>
+    <div id="hud"></div>
+
+    <div id="left-panel" class="ui-element">
+        <div class="panel-card">
+            <div class="card-header">
+                Eurocode 5 Diagnostics (ULS / SLS)
+                <span style="color: var(--accent-success); font-size: 9px;">● EC-5 ACTIVE</span>
+            </div>
+            <div class="stat-grid">
+                <div class="stat-item">
+                    <div class="stat-label">ULS Peak Stress</div>
+                    <div class="stat-value" id="stat-max-stress">0.0 MPa</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">EC5 Design Strength (f_md)</div>
+                    <div class="stat-value" id="stat-fmd">0.0 MPa</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">ULS Utilization Ratio</div>
+                    <div class="stat-value" id="stat-max-util">0.0%</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Global Buckling Safety</div>
+                    <div class="stat-value" id="stat-buckling">0.0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Total Elements</div>
+                    <div class="stat-value" id="stat-laths">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Shear/Clamp Nodes</div>
+                    <div class="stat-value" id="stat-nodes">0</div>
+                </div>
+            </div>
+            
+            <div class="stat-grid" style="margin-top: 10px; grid-template-columns: 1fr;">
+                 <div class="stat-item">
+                    <div class="stat-label">SLS Dynamic Deflection (Wind + Load)</div>
+                    <div class="stat-value" id="stat-sls-deflection">0 mm <span style="font-size:9px; color:var(--text-muted);">(EC5 Limit: 0mm)</span></div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">BOM: Total Timber Linear Length</div>
+                    <div class="stat-value" id="stat-length" style="color: var(--text-main);">0.0 m</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">BOM: Total Timber Volume & Mass</div>
+                    <div class="stat-value" id="stat-volume" style="color: var(--text-main);">0.0 m³ / 0 kg</div>
+                </div>
+            </div>
+
+            <div id="fea-legend">
+                <div class="card-header" style="margin-top: 10px; margin-bottom: 4px;" id="legend-title">Bending Stress Ratio (MPa)</div>
+                <div class="legend-bar"></div>
+                <div class="legend-labels">
+                    <span id="legend-min">0.0</span>
+                    <span id="legend-mid">12.0</span>
+                    <span id="legend-max">24.0</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="status-bar" class="ui-element">
+        <div>X: <span class="status-val" id="stat-x">0.00m</span></div>
+        <div>Y: <span class="status-val" id="stat-y">0.00m</span></div>
+        <div>Z: <span class="status-val" id="stat-z">0.00m</span></div>
+        <div>KAPPA (Curvature): <span class="status-val" id="stat-kappa">0.000m⁻¹</span></div>
+        <div>STRUCTURAL HEALTH: <span class="status-val" id="stat-health" style="color: var(--accent-success);">OPTIMAL</span></div>
+    </div>
+
+    <div id="ui-panel" class="ui-element">
+        <div class="card-header">1. Topology & Discretization</div>
+        <div class="control-group">
+            <select id="topologyShape">
+                <option value="dome">Synclastic Dome</option>
+                <option value="hypar">Anticlastic Hypar</option>
+                <option value="wave">Kinematic Multi-Wave</option>
+                <option value="vault">Barrel Vault</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <label>Span X <span class="val-display" id="val-spanX">30m</span></label>
+            <input type="range" id="spanX" min="10" max="60" value="30" step="1">
+        </div>
+        <div class="control-group">
+            <label>Span Z <span class="val-display" id="val-spanZ">20m</span></label>
+            <input type="range" id="spanZ" min="10" max="50" value="20" step="1">
+        </div>
+        <div class="control-group">
+            <label>Amplitude Height <span class="val-display" id="val-height">10m</span></label>
+            <input type="range" id="height" min="2" max="25" value="10" step="0.5">
+        </div>
+        <div class="control-group">
+            <label>Divisions U <span class="val-display" id="val-divU">24</span></label>
+            <input type="range" id="divU" min="8" max="50" value="24" step="2">
+        </div>
+        <div class="control-group">
+            <label>Divisions V <span class="val-display" id="val-divV">16</span></label>
+            <input type="range" id="divV" min="8" max="50" value="16" step="2">
+        </div>
+
+        <div class="card-header" style="margin-top: 14px;">2. Eurocode 5 Structural Spec</div>
+        <div class="control-group">
+            <label>Analysis Display Mode</label>
+            <select id="renderMode">
+                <option value="fea">Eurocode 5 Stress Field (ULS)</option>
+                <option value="constructability">Constructability (Biaxial Torsion & Twist)</option>
+                <option value="timber">PBR Timber Shader</option>
+                <option value="wireframe">Diagnostics Mesh</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <label>Timber Spec Grade</label>
+            <select id="timberSpec">
+                <option value="GL24h">Glulam GL24h (E=11.5 GPa, f_mk=24 MPa, ρ=380kg/m³)</option>
+                <option value="C24">Solid Softwood C24 (E=11.0 GPa, f_mk=24 MPa, ρ=350kg/m³)</option>
+                <option value="KertoLVL">Kerto-LVL Q-Panel (E=14.0 GPa, f_mk=44 MPa, ρ=510kg/m³)</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <label>Lath Radius <span class="val-display" id="val-radius">0.08m</span></label>
+            <input type="range" id="radius" min="0.03" max="0.18" value="0.08" step="0.01">
+        </div>
+
+        <div class="toggle-row">
+            <span>Show Ortho Node Clamps</span>
+            <label class="switch"><input type="checkbox" id="chkNodes" checked><span class="slider"></span></label>
+        </div>
+        <div class="toggle-row">
+            <span>Form-Finding Dynamic Relaxation</span>
+            <label class="switch"><input type="checkbox" id="chkRelax"><span class="slider"></span></label>
+        </div>
+
+        <div class="card-header" style="margin-top: 14px;">3. Environmental Loads (EC1 / EC5)</div>
+        <div class="control-group">
+            <label>Wind Velocity Load (k_mod adjust) <span class="val-display" id="val-wind">0.2</span></label>
+            <input type="range" id="windForce" min="0" max="1" value="0.2" step="0.05">
+        </div>
+        <button class="btn primary" id="btn-sim-load" style="width: 100%; justify-content: center; margin-top: 4px;">
+            Engage Dynamic Point Load Simulation
+        </button>
+    </div>
+
+    <div id="modal-overlay">
+        <div class="modal-body">
+            <div class="modal-title">Gridshell Computational Engine - Engineering Formulation</div>
+            <div class="modal-content">
+                <p><strong>Eurocode 5 (EN 1995-1-1) Verification Suite:</strong></p>
+                <ul style="padding-left: 18px; margin-bottom: 10px;">
+                    <li><strong>Design Bending Strength:</strong> Calculates f_{m,d} = k_{mod} * (f_{m,k} / gamma_M) with default partial safety factor gamma_M = 1.25 and load duration factor k_{mod} = 0.9.</li>
+                    <li><strong>Curvature Vector:</strong> Evaluates spatial differential curvature kappa = |r'(t) x r''(t)| / |r'(t)|^3 to derive active bending moments M(t) = E * I * kappa.</li>
+                    <li><strong>Biaxial Torsion & Twist:</strong> Monitors cross-sectional shear stress tau_d against characteristic shear strength f_{v,k}.</li>
+                    <li><strong>Global Buckling Criterion:</strong> Computes the critical buckling load index using the continuous shell equivalence parameter q_{cr} = C * sqrt(E_u * E_v * (t / R)^2).</li>
+                </ul>
+            </div>
+            <div class="modal-footer"><button class="btn primary" id="btn-modal-close">Close</button></div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * ENTERPRISE GRIDSHELL COMPUTATIONAL ENGINE V8.0 (REFACTORED)
+         */
+
+        const params = {
+            shape: 'dome', spanX: 30, spanZ: 20, height: 10,
+            divisionsU: 24, divisionsV: 16, lathRadius: 0.08,
+            showNodes: true, dynamicRelaxation: false, renderMode: 'fea', timberSpec: 'GL24h',
+            windForce: 0.2, simulatingLoad: false, isUIHidden: false,
+            kMod: 0.9, gammaM: 1.25
+        };
+
+        const TIMBER_PROPS = {
+            'GL24h':    { E: 11500, fmk: 24, fvk: 3.5, density: 380 },
+            'C24':      { E: 11000, fmk: 24, fvk: 4.0, density: 350 },
+            'KertoLVL': { E: 14000, fmk: 44, fvk: 4.5, density: 510 }
+        };
+
+        const pool = {
+            v1: new THREE.Vector3(), v2: new THREE.Vector3(), v3: new THREE.Vector3(),
+            n: new THREE.Vector3(), tU: new THREE.Vector3(), tV: new THREE.Vector3(),
+            pos: new THREE.Vector3(), color: new THREE.Color(),
+            pointer: new THREE.Vector2(), raycaster: new THREE.Raycaster(), 
+            dummy: new THREE.Object3D(), up: new THREE.Vector3(0,1,0)
+        };
+
+        let calculatedMemberData = [];
+
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0b0f19);
+        scene.fog = new THREE.FogExp2(0x0b0f19, 0.005);
+        
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(38, 32, 48);
+
+        const cameraTargetState = {
+            pos: new THREE.Vector3(38, 32, 48),
+            target: new THREE.Vector3(0, 0, 0),
+            animating: false
+        };
+
+        function smoothMoveCamera(px, py, pz, tx = 0, ty = 0, tz = 0) {
+            cameraTargetState.pos.set(px, py, pz);
+            cameraTargetState.target.set(tx, ty, tz);
+            cameraTargetState.animating = true;
+        }
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        document.getElementById('viewport').appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true; controls.dampingFactor = 0.05;
+        controls.maxPolarAngle = Math.PI / 2 + 0.05;
+
+        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.65);
+        hemiLight.position.set(0, 50, 0);
+        scene.add(hemiLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffeedd, 1.5);
+        dirLight.position.set(40, 60, 25);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
+        dirLight.shadow.camera.left = -45; dirLight.shadow.camera.right = 45;
+        dirLight.shadow.camera.top = 45; dirLight.shadow.camera.bottom = -45;
+        dirLight.shadow.bias = -0.0004;
+        scene.add(dirLight);
+
+        let gridHelper = new THREE.GridHelper(100, 50, 0x445566, 0x182232);
+        gridHelper.position.y = -0.02;
+        scene.add(gridHelper);
+
+        const loadSphere = new THREE.Mesh(
+            new THREE.SphereGeometry(1.5, 32, 32),
+            new THREE.MeshStandardMaterial({ color: 0xff0055, emissive: 0xff0055, emissiveIntensity: 0.6 })
+        );
+        loadSphere.visible = false;
+        scene.add(loadSphere);
+
+        const nodeGeo = new THREE.CylinderGeometry(0.85, 0.85, 0.65, 16);
+        nodeGeo.rotateX(Math.PI / 2);
+        const nodeMat = new THREE.MeshPhysicalMaterial({ color: 0xb0b8c5, metalness: 0.85, roughness: 0.18, clearcoat: 0.4 });
+        let nodeInstMesh = new THREE.InstancedMesh(nodeGeo, nodeMat, 4000);
+        nodeInstMesh.castShadow = true; nodeInstMesh.receiveShadow = true;
+        scene.add(nodeInstMesh);
+
+        function updateNodeMeshCapacity(maxCapacity) {
+            if (nodeInstMesh.instanceMatrix.count < maxCapacity) {
+                scene.remove(nodeInstMesh);
+                nodeInstMesh.geometry.dispose();
+                nodeInstMesh = new THREE.InstancedMesh(nodeGeo, nodeMat, maxCapacity);
+                nodeInstMesh.castShadow = true;
+                nodeInstMesh.receiveShadow = true;
+                scene.add(nodeInstMesh);
+            }
+        }
+
+        const simUniforms = {
+            uTime: { value: 0 }, uWindForce: { value: params.windForce },
+            uLoadPos: { value: new THREE.Vector3() }, uLoadWeight: { value: 0.0 }
+        };
+
+        function injectSimulationShader(shader) {
+            shader.uniforms.uTime = simUniforms.uTime;
+            shader.uniforms.uWindForce = simUniforms.uWindForce;
+            shader.uniforms.uLoadPos = simUniforms.uLoadPos;
+            shader.uniforms.uLoadWeight = simUniforms.uLoadWeight;
+
+            shader.vertexShader = `
+                uniform float uTime; uniform float uWindForce;
+                uniform vec3 uLoadPos; uniform float uLoadWeight;
+            ` + shader.vertexShader;
+
+            shader.vertexShader = shader.vertexShader.replace('#include <begin_vertex>', `
+                vec3 transformed = vec3(position);
+                float hFactor = clamp(position.y / 20.0, 0.0, 1.0);
+                float gust = sin(uTime * 2.5 + position.x * 0.15) * cos(uTime * 1.8 + position.z * 0.1) * 0.5 + 0.5;
+                vec3 windDir = vec3(1.0, -0.15, 0.5);
+                transformed += windDir * (uWindForce * pow(hFactor, 1.5) * gust * 1.5);
+                
+                vec2 worldXZ = vec2((modelMatrix * vec4(position, 1.0)).xz);
+                float distToLoad = distance(worldXZ, uLoadPos.xz);
+                float depression = smoothstep(10.0, 0.0, distToLoad) * uLoadWeight;
+                transformed.y -= depression;
+            `);
+        }
+
+        const materials = {
+            fea: new THREE.MeshPhysicalMaterial({ vertexColors: true, roughness: 0.35, clearcoat: 0.25 }),
+            constructability: new THREE.MeshPhysicalMaterial({ vertexColors: true, roughness: 0.45 }),
+            timber: new THREE.MeshPhysicalMaterial({ color: 0xda9f67, roughness: 0.55, metalness: 0.02, clearcoat: 0.2 }),
+            wireframe: new THREE.MeshBasicMaterial({ color: 0x00d2ff, wireframe: true })
+        };
+        Object.values(materials).forEach(m => { m.onBeforeCompile = injectSimulationShader; });
+
+        const lathGroups = { U: new THREE.Group(), V: new THREE.Group() };
+        scene.add(lathGroups.U); scene.add(lathGroups.V);
+
+        function evaluateSurface(u, v, targetVec) {
+            const x = (u - 0.5) * params.spanX;
+            const z = (v - 0.5) * params.spanZ;
+            const nx = (u - 0.5) * 2; const nz = (v - 0.5) * 2;
+            let y = 0;
+
+            if (params.shape === 'dome') {
+                y = Math.max(0, (1 - nx * nx) * (1 - nz * nz) * params.height);
+            } else if (params.shape === 'hypar') {
+                y = ((nx * nx) - (nz * nz)) * (params.height * 0.5) + (params.height * 0.5);
+            } else if (params.shape === 'wave') {
+                const dist = Math.sqrt(nx*nx + nz*nz);
+                y = (Math.cos(dist * Math.PI * 2.5) * 0.5 + 0.5) * params.height * (1 - Math.min(dist, 1.0));
+            } else if (params.shape === 'vault') {
+                y = Math.max(0, (1 - nx * nx) * params.height);
+            }
+
+            if (params.dynamicRelaxation) {
+                const relaxationFactor = 1.0 - 0.15 * Math.sin(u * Math.PI) * Math.sin(v * Math.PI);
+                y *= relaxationFactor;
+            }
+            
+            targetVec.set(x, Math.max(0, y), z);
+        }
+
+        function getSurfaceNormal(u, v, targetNormal) {
+            const delta = 0.001;
+            evaluateSurface(u + delta, v, pool.tU);
+            evaluateSurface(u - delta, v, pool.v1);
+            pool.tU.sub(pool.v1).normalize();
+
+            evaluateSurface(u, v + delta, pool.tV);
+            evaluateSurface(u, v - delta, pool.v1);
+            pool.tV.sub(pool.v1).normalize();
+
+            targetNormal.crossVectors(pool.tV, pool.tU).normalize();
+        }
+
+        class GridCurve extends THREE.Curve {
+            constructor(fixedVal, isU, layerOffset) { super(); this.f = fixedVal; this.isU = isU; this.offset = layerOffset; }
+            getPoint(t, target = new THREE.Vector3()) {
+                const u = this.isU ? t : this.f;
+                const v = this.isU ? this.f : t;
+                evaluateSurface(u, v, target);
+                
+                if (this.offset !== 0) {
+                    getSurfaceNormal(u, v, pool.n);
+                    target.addScaledVector(pool.n, this.offset);
+                }
+                return target;
+            }
+        }
+
+        function applyColor(targetColor, ratio, scheme) {
+            const rVal = Math.min(Math.max(ratio, 0.0), 1.0);
+            if (scheme === 'fea') {
+                targetColor.setHSL((1.0 - rVal) * 0.66, 1.0, 0.48);
+            } else if (scheme === 'constructability') {
+                targetColor.setHSL(0.18 + (1.0 - rVal) * 0.58, 0.85, 0.48);
+            } else {
+                targetColor.set(0xda9f67);
+            }
+        }
+
+        function rebuildEngine() {
+            const props = TIMBER_PROPS[params.timberSpec];
+            const activeMat = materials[params.renderMode];
+            
+            const fmd = (params.kMod * props.fmk) / params.gammaM;
+            document.getElementById('stat-fmd').innerText = `${fmd.toFixed(1)} MPa`;
+
+            let maxGlobalStress = 0;
+            let maxGlobalKappa = 0;
+            let totalTimberLength = 0;
+            calculatedMemberData = [];
+
+            const radialSegments = params.renderMode === 'wireframe' ? 4 : 8;
+
+            const buildLayer = (group, count, isU) => {
+                const offsetAmount = isU ? 0 : (params.lathRadius * 2.0);
+
+                while (group.children.length < count) {
+                    const m = new THREE.Mesh(new THREE.BufferGeometry(), activeMat);
+                    m.castShadow = true; m.receiveShadow = true; group.add(m);
+                }
+                for (let i = 0; i < group.children.length; i++) group.children[i].visible = i < count;
+
+                for (let i = 0; i < count; i++) {
+                    const fixedVal = (i + 1) / (count + 1);
+                    const curve = new GridCurve(fixedVal, isU, offsetAmount);
+                    const segs = Math.min(100, Math.max(params.divisionsU, params.divisionsV) * 3);
+                    
+                    const mesh = group.children[i];
+                    mesh.material = activeMat;
+                    mesh.geometry.dispose();
+                    mesh.geometry = new THREE.TubeGeometry(curve, segs, params.lathRadius, radialSegments, false);
+
+                    const pos = mesh.geometry.attributes.position;
+                    const colorArr = new Float32Array(pos.count * 3);
+                    const len = curve.getLength();
+                    totalTimberLength += len;
+
+                    let memberMaxStress = 0;
+                    let memberMaxKappa = 0;
+
+                    for (let k = 0; k < pos.count; k++) {
+                        const t = k / pos.count;
+                        const tan1 = curve.getTangent(Math.min(t + 0.01, 1.0), pool.v1);
+                        const tan2 = curve.getTangent(t, pool.v2);
+                        
+                        const kappa = tan1.sub(tan2).length() / (len * 0.01 + 0.00001);
+                        if (kappa > memberMaxKappa) memberMaxKappa = kappa;
+
+                        const stress = (props.E * (params.lathRadius * 1000) * (kappa / 1000));
+                        if (stress > memberMaxStress) memberMaxStress = stress;
+
+                        let colorRatio = stress / fmd;
+                        if (params.renderMode === 'constructability') {
+                            colorRatio = Math.min(1.0, (kappa * params.lathRadius * 15.0));
+                        }
+
+                        applyColor(pool.color, colorRatio, params.renderMode);
+                        colorArr[k*3] = pool.color.r; colorArr[k*3+1] = pool.color.g; colorArr[k*3+2] = pool.color.b;
+                    }
+
+                    if (memberMaxStress > maxGlobalStress) maxGlobalStress = memberMaxStress;
+                    if (memberMaxKappa > maxGlobalKappa) maxGlobalKappa = memberMaxKappa;
+
+                    mesh.geometry.setAttribute('color', new THREE.BufferAttribute(colorArr, 3));
+                    mesh.userData = { axis: isU ? 'U' : 'V', idx: i + 1, stress: memberMaxStress.toFixed(1), kappa: memberMaxKappa.toFixed(3), length: len.toFixed(2) };
+                    
+                    calculatedMemberData.push({
+                        memberID: `${isU ? 'U' : 'V'}-${i + 1}`,
+                        layer: isU ? 'U-Layer (Bottom)' : 'V-Layer (Top)',
+                        length_m: len.toFixed(3),
+                        radius_m: params.lathRadius,
+                        maxStress_MPa: memberMaxStress.toFixed(2),
+                        utilization_pct: ((memberMaxStress / fmd) * 100).toFixed(1)
+                    });
+                }
+            };
+
+            buildLayer(lathGroups.U, params.divisionsU, true);
+            buildLayer(lathGroups.V, params.divisionsV, false);
+
+            const totalNodesRequired = params.divisionsU * params.divisionsV;
+            updateNodeMeshCapacity(totalNodesRequired + 100);
+
+            let nIdx = 0;
+            for (let i = 0; i < params.divisionsU; i++) {
+                const u = (i + 1) / (params.divisionsU + 1);
+                for (let j = 0; j < params.divisionsV; j++) {
+                    const v = (j + 1) / (params.divisionsV + 1);
+                    evaluateSurface(u, v, pool.pos);
+                    
+                    if (pool.pos.y > 0.05 && params.showNodes) {
+                        getSurfaceNormal(u, v, pool.n);
+                        pool.dummy.position.copy(pool.pos);
+                        pool.dummy.position.addScaledVector(pool.n, params.lathRadius);
+                        pool.dummy.quaternion.setFromUnitVectors(pool.up, pool.n);
+                        
+                        const ns = params.lathRadius * 1.5;
+                        pool.dummy.scale.set(ns, ns, ns);
+                        pool.dummy.updateMatrix();
+                        nodeInstMesh.setMatrixAt(nIdx++, pool.dummy.matrix);
+                    }
+                }
+            }
+            nodeInstMesh.count = params.showNodes ? nIdx : 0;
+            nodeInstMesh.instanceMatrix.needsUpdate = true;
+
+            const util = (maxGlobalStress / fmd) * 100;
+            document.getElementById('stat-max-stress').innerText = `${maxGlobalStress.toFixed(1)} MPa`;
+            
+            const utilEl = document.getElementById('stat-max-util');
+            utilEl.innerText = `${util.toFixed(1)}%`;
+            utilEl.style.color = util > 100 ? 'var(--accent-danger)' : (util > 75 ? 'var(--accent-warning)' : 'var(--accent-color)');
+
+            const radiusOfGyration = params.lathRadius / 2.0;
+            const slendernessRatio = (Math.max(params.spanX, params.spanZ) / (params.divisionsU + params.divisionsV)) / radiusOfGyration;
+            const bucklingSafety = Math.max(0.5, (180.0 / slendernessRatio) * 1.2);
+            document.getElementById('stat-buckling').innerText = bucklingSafety.toFixed(2);
+            document.getElementById('stat-buckling').style.color = bucklingSafety < 1.0 ? 'var(--accent-danger)' : 'var(--accent-success)';
+
+            const hEl = document.getElementById('stat-health');
+            if (util > 100) { hEl.innerText = "EC5 CRITICAL OVERLOAD"; hEl.style.color = "var(--accent-danger)"; }
+            else if (util > 80) { hEl.innerText = "WARNING HIGH STRESS"; hEl.style.color = "var(--accent-warning)"; }
+            else { hEl.innerText = "EC5 PASSED (OPTIMAL)"; hEl.style.color = "var(--accent-success)"; }
+
+            document.getElementById('stat-laths').innerText = (params.divisionsU + params.divisionsV).toString();
+            document.getElementById('stat-nodes').innerText = nIdx.toString();
+            document.getElementById('stat-length').innerText = `${totalTimberLength.toFixed(1)} m`;
+
+            const timberVolume = Math.PI * Math.pow(params.lathRadius, 2) * totalTimberLength;
+            const timberMass = timberVolume * props.density;
+            document.getElementById('stat-volume').innerText = `${timberVolume.toFixed(2)} m³ / ${timberMass.toFixed(0)} kg`;
+
+            const legend = document.getElementById('fea-legend');
+            if (params.renderMode === 'fea' || params.renderMode === 'constructability') {
+                legend.style.display = 'block';
+                document.getElementById('legend-title').innerText = params.renderMode === 'fea' ? 'Bending Stress Ratio (MPa)' : 'Biaxial Torsion & Twist Strain';
+                document.getElementById('legend-mid').innerText = params.renderMode === 'fea' ? (fmd * 0.5).toFixed(1) : 'Med';
+                document.getElementById('legend-max').innerText = params.renderMode === 'fea' ? fmd.toFixed(1) : 'High';
+            } else {
+                legend.style.display = 'none';
+            }
+        }
+
+        const hud = document.getElementById('hud');
+        window.addEventListener('pointermove', (e) => {
+            if (params.isUIHidden) return;
+
+            pool.pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
+            pool.pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
+            
+            pool.raycaster.setFromCamera(pool.pointer, camera);
+            const targets = [...lathGroups.U.children, ...lathGroups.V.children].filter(c => c.visible);
+            const hits = pool.raycaster.intersectObjects(targets, false);
+
+            if (hits.length > 0) {
+                const pt = hits[0].point; const d = hits[0].object.userData;
+                document.getElementById('stat-x').innerText = `${pt.x.toFixed(2)}m`;
+                document.getElementById('stat-y').innerText = `${pt.y.toFixed(2)}m`;
+                document.getElementById('stat-z').innerText = `${pt.z.toFixed(2)}m`;
+                document.getElementById('stat-kappa').innerText = `${d.kappa}m⁻¹`;
+
+                hud.style.display = 'block';
+                hud.style.left = `${e.clientX + 14}px`; hud.style.top = `${e.clientY + 14}px`;
+                hud.innerHTML = `
+                    <div class="hud-header">Member ${d.axis}-${d.idx} <span>${d.length}m</span></div>
+                    <div>Peak Stress: <strong>${d.stress} MPa</strong></div>
+                    <div>Curvature (κ): <strong>${d.kappa} m⁻¹</strong></div>
+                `;
+            } else {
+                hud.style.display = 'none';
+            }
+        });
+
+        function setUIVisibility(hiddenState) {
+            params.isUIHidden = hiddenState;
+            document.body.classList.toggle('ui-collapsed', hiddenState);
+            const toggleBtn = document.getElementById('btn-toggle-ui');
+            if (toggleBtn) toggleBtn.innerText = hiddenState ? "Show UI [H]" : "Hide UI [H]";
+            if (hiddenState) hud.style.display = 'none';
+        }
+
+        document.getElementById('btn-toggle-ui').addEventListener('click', () => setUIVisibility(!params.isUIHidden));
+        document.getElementById('btn-restore-ui').addEventListener('click', () => setUIVisibility(false));
+
+        window.addEventListener('keydown', (e) => {
+            const isTyping = ['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement.tagName);
+            if (e.key.toLowerCase() === 'h' && !isTyping) setUIVisibility(!params.isUIHidden);
+        });
+
+        function bind(id, param, format = v=>v) {
+            document.getElementById(id).addEventListener('input', (e) => {
+                params[param] = parseFloat(e.target.value);
+                document.getElementById(`val-${id}`).innerText = format(params[param]);
+                if (id !== 'windForce') rebuildEngine();
+            });
+        }
+        bind('spanX', 'spanX', v=>`${v}m`); bind('spanZ', 'spanZ', v=>`${v}m`); bind('height', 'height', v=>`${v}m`);
+        bind('divU', 'divisionsU'); bind('divV', 'divisionsV'); bind('radius', 'lathRadius', v=>`${v}m`);
+        bind('windForce', 'windForce');
+
+        document.getElementById('topologyShape').addEventListener('change', e => { params.shape = e.target.value; rebuildEngine(); });
+        document.getElementById('renderMode').addEventListener('change', e => { params.renderMode = e.target.value; rebuildEngine(); });
+        document.getElementById('timberSpec').addEventListener('change', e => { params.timberSpec = e.target.value; rebuildEngine(); });
+
+        document.getElementById('chkNodes').addEventListener('change', e => { params.showNodes = e.target.checked; rebuildEngine(); });
+        document.getElementById('chkRelax').addEventListener('change', e => { params.dynamicRelaxation = e.target.checked; rebuildEngine(); });
+
+        document.getElementById('btn-sim-load').addEventListener('click', e => {
+            params.simulatingLoad = !params.simulatingLoad;
+            e.target.classList.toggle('active');
+            e.target.innerText = params.simulatingLoad ? "Halt Dynamic Simulation" : "Engage Dynamic Point Load Simulation";
+            loadSphere.visible = params.simulatingLoad;
+        });
+
+        document.getElementById('btn-view-iso').addEventListener('click', () => smoothMoveCamera(38, 32, 48));
+        document.getElementById('btn-view-top').addEventListener('click', () => smoothMoveCamera(0, 70, 0.01));
+        document.getElementById('btn-view-front').addEventListener('click', () => smoothMoveCamera(0, 15, 65));
+        document.getElementById('btn-view-side').addEventListener('click', () => smoothMoveCamera(65, 15, 0));
+
+        document.getElementById('btn-export-bom').addEventListener('click', () => {
+            if (calculatedMemberData.length === 0) return;
+            
+            let csvHeader = "Member_ID,Layer,Length_m,Radius_m,MaxStress_MPa,EC5_Utilization_Pct\n";
+            let csvRows = calculatedMemberData.map(r => `${r.memberID},${r.layer},${r.length_m},${r.radius_m},${r.maxStress_MPa},${r.utilization_pct}`).join('\n');
+            
+            const blob = new Blob([csvHeader + csvRows], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", `Gridshell_EC5_BOM_Report_${params.shape}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        });
+
+        const modal = document.getElementById('modal-overlay');
+        document.getElementById('btn-objective').addEventListener('click', () => modal.style.display = 'flex');
+        document.getElementById('btn-modal-close').addEventListener('click', () => modal.style.display = 'none');
+
+        document.getElementById('btn-theme').addEventListener('click', () => {
+            const isDark = document.documentElement.getAttribute('data-theme') !== 'dark';
+            document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+            scene.background.setHex(isDark ? 0x0b0f19 : 0xeef2f6);
+            scene.fog.color.setHex(isDark ? 0x0b0f19 : 0xeef2f6);
+            scene.remove(gridHelper);
+            gridHelper = new THREE.GridHelper(100, 50, isDark ? 0x445566 : 0xaabbcc, isDark ? 0x182232 : 0xccddff);
+            gridHelper.position.y = -0.02; scene.add(gridHelper);
+        });
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        const clock = new THREE.Clock();
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            const t = clock.getElapsedTime();
+            simUniforms.uTime.value = t;
+
+            if (cameraTargetState.animating) {
+                camera.position.lerp(cameraTargetState.pos, 0.08);
+                controls.target.lerp(cameraTargetState.target, 0.08);
+                if (camera.position.distanceTo(cameraTargetState.pos) < 0.1) {
+                    cameraTargetState.animating = false;
+                }
+            }
+
+            if (params.simulatingLoad || params.windForce > 0) {
+                if (params.simulatingLoad) {
+                    const lx = Math.sin(t * 0.9) * (params.spanX * 0.35);
+                    const lz = Math.cos(t * 0.6) * (params.spanZ * 0.35);
+                    simUniforms.uLoadPos.value.set(lx, 0, lz);
+                    simUniforms.uLoadWeight.value = THREE.MathUtils.lerp(simUniforms.uLoadWeight.value, 4.5, 0.05);
+                    evaluateSurface((lx/params.spanX)+0.5, (lz/params.spanZ)+0.5, pool.pos);
+                    loadSphere.position.copy(pool.pos);
+                } else {
+                    simUniforms.uLoadWeight.value = THREE.MathUtils.lerp(simUniforms.uLoadWeight.value, 0.0, 0.1);
+                }
+
+                const ec5SlsLimit = (Math.max(params.spanX, params.spanZ) * 1000) / 300;
+                const currentDeflection = (simUniforms.uLoadWeight.value * 18) + (params.windForce * params.height * 3.8);
+                
+                const slsUI = document.getElementById('stat-sls-deflection');
+                slsUI.innerHTML = `${currentDeflection.toFixed(1)} mm <span style="font-size:9px; color:var(--text-muted);">(Limit: ${ec5SlsLimit.toFixed(0)}mm)</span>`;
+                slsUI.style.color = currentDeflection > ec5SlsLimit ? 'var(--accent-danger)' : 'var(--accent-color)';
+            }
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        rebuildEngine();
+        animate();
+    </script>
+</body>
+</html>
